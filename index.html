@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sheets Filterable Table</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        select {
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Google Sheets Filterable Table</h2>
+
+    <!-- Dropdown filters will be added here dynamically -->
+    <div id="filters"></div>
+
+    <!-- Table container -->
+    <div id="table-container">Loading data...</div>
+
+    <script>
+        const scriptURL = "https://script.google.com/macros/s/AKfycbzQJNMZmO0SfIXfaXaRhwp9PeaIhix5XSPipUW0Kja1u0LtHTRt9kPkX6e6IVFvyDNV/exec";  // Replace with your Google Apps Script URL
+        let originalData = [];  // Store the original data
+
+        fetch(scriptURL)
+            .then(response => response.json())
+            .then(data => {
+                originalData = data;  // Save data for filtering
+                createFilters(data);
+                displayData(data);
+            })
+            .catch(error => console.error("Error fetching data:", error));
+
+        function createFilters(data) {
+            const filterContainer = document.getElementById("filters");
+            filterContainer.innerHTML = ""; // Clear previous filters
+            
+            if (data.length === 0) return;
+
+            const headers = data[0]; // Get column headers
+            headers.forEach((header, colIndex) => {
+                let uniqueValues = [...new Set(data.slice(1).map(row => row[colIndex]))]; // Get unique values
+                
+                let filterLabel = document.createElement("label");
+                filterLabel.innerHTML = `${header}: `;
+                
+                let filterSelect = document.createElement("select");
+                filterSelect.setAttribute("data-index", colIndex);
+                filterSelect.multiple = true; // Enable multi-selection
+                filterSelect.innerHTML = `<option value="">All</option>`;
+                
+                uniqueValues.forEach(value => {
+                    let option = document.createElement("option");
+                    option.value = value;
+                    option.innerText = value;
+                    filterSelect.appendChild(option);
+                });
+
+                filterSelect.addEventListener("change", filterTable);
+                filterContainer.appendChild(filterLabel);
+                filterContainer.appendChild(filterSelect);
+            });
+        }
+
+        function filterTable() {
+            let filters = document.querySelectorAll("#filters select");
+            let filteredData = originalData.filter((row, rowIndex) => {
+                if (rowIndex === 0) return true; // Keep headers
+                
+                return Array.from(filters).every(select => {
+                    let columnIndex = select.getAttribute("data-index");
+                    let selectedOptions = Array.from(select.selectedOptions).map(opt => opt.value);
+                    return selectedOptions.length === 0 || selectedOptions.includes(row[columnIndex]);
+                });
+            });
+
+            displayData(filteredData);
+        }
+
+        function displayData(data) {
+            let tableHTML = "<table>";
+            data.forEach((row, rowIndex) => {
+                tableHTML += rowIndex === 0 ? "<thead><tr>" : "<tr>";
+                row.forEach(cell => {
+                    tableHTML += rowIndex === 0 ? `<th>${cell}</th>` : `<td>${cell}</td>`;
+                });
+                tableHTML += rowIndex === 0 ? "</tr></thead><tbody>" : "</tr>";
+            });
+            tableHTML += "</tbody></table>";
+            document.getElementById("table-container").innerHTML = tableHTML;
+        }
+    </script>
+
+</body>
+</html>
